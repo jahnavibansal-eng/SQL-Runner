@@ -10,8 +10,8 @@ export default function ResultsTable({ rows = [] }) {
   const columns = Object.keys(rows[0]);
 
   return (
-    <div className="wrap">
-      <table className="table">
+    <div className="results-table-wrap">
+      <table className="results-table">
         <thead>
           <tr>
             {columns.map((col) => (
@@ -19,9 +19,10 @@ export default function ResultsTable({ rows = [] }) {
             ))}
           </tr>
         </thead>
+
         <tbody>
           {rows.map((row, idx) => (
-            <tr key={row.id || idx}>
+            <tr key={idx}>
               {columns.map((col) => (
                 <td key={col + idx}>{String(row[col] ?? "")}</td>
               ))}
