@@ -188,3 +188,13 @@ TESTING
 
 Use Swagger UI to test backend APIs:
 http://127.0.0.1:8000/docs
+
+PRODUCTION BUILD
+
+To create a production bundle:
+npm run build
+
+LIVE DEMO
+
+The application is deployed and running at:
+https://sql-runner-goyx.onrender.com
