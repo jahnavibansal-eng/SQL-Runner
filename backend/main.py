@@ -9,18 +9,6 @@ import os
 
 app = FastAPI()
 
-DIST_PATH = os.path.join(os.path.dirname(__file__), "dist")
-
-app.mount("/assets", StaticFiles(directory=os.path.join(DIST_PATH, "assets")), name="assets")
-
-@app.get("/")
-def serve_root():
-    return FileResponse(os.path.join(DIST_PATH, "index.html"))
-
-@app.get("/{path:path}")
-def catch_all(path: str):
-    return FileResponse(os.path.join(DIST_PATH, "index.html"))
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,7 +18,7 @@ app.add_middleware(
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sql_runner.db")
 
-# Query history table setup
+
 def init_history_table():
     conn = sqlite3.connect(DATABASE_URL)
     cursor = conn.cursor()
@@ -53,12 +41,10 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Authentication
 def require_auth(token: str = Header(None)):
     if token not in TOKENS:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return TOKENS[token]
-
 
 @app.post("/login")
 def login(data: Dict[str, str]):
@@ -79,7 +65,6 @@ def login(data: Dict[str, str]):
 
     return {"token": token, "user_id": row["id"]}
 
-
 @app.get("/tables")
 def get_tables(user_id: int = Depends(require_auth)):
     conn = get_db()
@@ -99,21 +84,14 @@ def table_info(name: str, user_id: int = Depends(require_auth)):
     if name not in valid_tables:
         raise HTTPException(status_code=400, detail="Invalid table name")
 
-    try:
-        cur.execute(f"PRAGMA table_info('{name}')")
-        columns = [{"name": r[1], "type": r[2]} for r in cur.fetchall()]
+    cur.execute(f"PRAGMA table_info('{name}')")
+    columns = [{"name": r[1], "type": r[2]} for r in cur.fetchall()]
 
-        cur.execute(f"SELECT * FROM '{name}' LIMIT 5")
-        rows = [dict(r) for r in cur.fetchall()]
+    cur.execute(f"SELECT * FROM '{name}' LIMIT 5")
+    rows = [dict(r) for r in cur.fetchall()]
 
-        return {"columns": columns, "sample_data": rows}
-
-    except sqlite3.Error as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    finally:
-        conn.close()
-
+    conn.close()
+    return {"columns": columns, "sample_data": rows}
 
 @app.post("/query")
 def execute_query(data: Dict[str, str], user_id: int = Depends(require_auth)):
@@ -123,7 +101,6 @@ def execute_query(data: Dict[str, str], user_id: int = Depends(require_auth)):
 
     conn = get_db()
     cur = conn.cursor()
-
     try:
         cur.execute(sql)
         results = cur.fetchall()
@@ -136,13 +113,11 @@ def execute_query(data: Dict[str, str], user_id: int = Depends(require_auth)):
 
     except sqlite3.Error as e:
         raise HTTPException(status_code=400, detail=str(e))
-
     finally:
         conn.close()
 
-
 @app.get("/history")
-def get_query_history(user_id: int = Depends(require_auth)):
+def get_history(user_id: int = Depends(require_auth)):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT query, created_at FROM query_history ORDER BY id DESC LIMIT 20")
@@ -151,7 +126,6 @@ def get_query_history(user_id: int = Depends(require_auth)):
 
     return [{"query": r["query"], "created_at": r["created_at"]} for r in rows]
 
-
 @app.delete("/history")
 def clear_history(user_id: int = Depends(require_auth)):
     conn = get_db()
@@ -159,4 +133,17 @@ def clear_history(user_id: int = Depends(require_auth)):
     cur.execute("DELETE FROM query_history")
     conn.commit()
     conn.close()
-    return {"message": "Query history cleared"}
+    return {"message": "History cleared"}
+
+
+DIST_PATH = os.path.join(os.path.dirname(__file__), "dist")
+
+app.mount("/assets", StaticFiles(directory=os.path.join(DIST_PATH, "assets")), name="assets")
+
+@app.get("/")
+def root():
+    return FileResponse(os.path.join(DIST_PATH, "index.html"))
+
+@app.get("/{path:path}")
+def catch_all(path: str):
+    return FileResponse(os.path.join(DIST_PATH, "index.html"))
